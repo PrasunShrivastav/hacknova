@@ -149,11 +149,24 @@ export default function KnowledgeGraph() {
         </div>
       )}
 
-      {/* Stats bar */}
-      <div className="flex items-center gap-4 px-4 py-2 border-t border-aria-border bg-aria-bg/50">
-        <span className="text-[10px] text-aria-text-muted">{graphData.nodes.length} nodes</span>
-        <span className="text-[10px] text-aria-text-muted">{graphData.edges.length} edges</span>
-        <span className="text-[10px] text-aria-text-muted">{domains.length} domains</span>
+      {/* Stats bar - fixed positioning */}
+      <div className="sticky bottom-0 flex items-center justify-between gap-4 px-4 py-3 border-t border-aria-border bg-aria-bg/95 backdrop-blur-sm">
+        <div className="flex items-center gap-4">
+          <span className="text-[10px] text-aria-text-muted">{graphData.nodes.length} nodes</span>
+          <span className="text-[10px] text-aria-text-muted">{graphData.edges.length} edges</span>
+          <span className="text-[10px] text-aria-text-muted">{domains.length} domains</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1 text-[10px] text-aria-text-muted">
+            <span className="w-2 h-2 rounded-full bg-aria-green" /> supports
+          </span>
+          <span className="flex items-center gap-1 text-[10px] text-aria-text-muted">
+            <span className="w-2 h-2 rounded-full bg-aria-red" /> contradicts
+          </span>
+          <span className="flex items-center gap-1 text-[10px] text-aria-text-muted">
+            <span className="w-2 h-2 rounded-full bg-aria-text-muted" /> cites
+          </span>
+        </div>
       </div>
     </div>
   );

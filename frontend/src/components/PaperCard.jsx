@@ -163,10 +163,16 @@ export default function PaperCard({ paper, index }) {
             </div>
           )}
 
-          {/* Link — fallback to pdf_url if url is missing */}
-          {(paper.url || paper.pdf_url) && (
+          {/* Link — multiple fallback strategies */}
+          {(paper.url || paper.pdf_url || paper.doi || paper.arxiv_id) && (
             <a
-              href={paper.url || paper.pdf_url}
+              href={
+                paper.url || 
+                paper.pdf_url || 
+                (paper.doi ? `https://doi.org/${paper.doi}` : null) ||
+                (paper.arxiv_id ? `https://arxiv.org/abs/${paper.arxiv_id}` : null) ||
+                '#'
+              }
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs text-aria-accent hover:underline"
