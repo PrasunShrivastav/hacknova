@@ -1,0 +1,13 @@
+fastapi==0.111.0
+uvicorn==0.30.1
+google-generativeai==0.7.2
+sentence-transformers==3.0.1
+chromadb==0.5.3
+networkx==3.3
+arxiv==2.1.0
+httpx==0.27.0
+pydantic==2.7.4
+python-dotenv==1.0.1
+scikit-learn==1.5.0
+numpy==1.26.4
+sse-starlette==2.1.0
