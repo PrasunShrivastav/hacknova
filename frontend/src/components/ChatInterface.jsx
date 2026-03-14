@@ -33,7 +33,7 @@ export default function ChatInterface() {
         <button
           id="chat-toggle"
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 btn-glow w-14 h-14 rounded-full flex items-center justify-center text-xl shadow-lg shadow-aria-accent/20"
+          className="fixed bottom-6 left-4  z-50 btn-glow w-14 h-14 rounded-full flex items-center justify-center text-xl shadow-lg shadow-aria-accent/20"
         >
           💬
         </button>
@@ -42,7 +42,7 @@ export default function ChatInterface() {
       {/* Chat panel */}
       {isOpen && (
         <div className="fixed bottom-6 right-6 z-50 w-96 h-[500px] glass-card flex flex-col shadow-2xl shadow-aria-accent/10 animate-slide-up"
-             style={{ border: '1px solid rgba(0, 212, 255, 0.15)' }}>
+          style={{ border: '1px solid rgba(0, 212, 255, 0.15)' }}>
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-aria-border">
             <div className="flex items-center gap-2">
@@ -90,11 +90,10 @@ export default function ChatInterface() {
                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-lg px-3 py-2 text-xs ${
-                    msg.role === 'user'
-                      ? 'bg-aria-accent/15 text-aria-text border border-aria-accent/20'
-                      : 'bg-aria-surface text-aria-text-dim border border-aria-border'
-                  }`}
+                  className={`max-w-[85%] rounded-lg px-3 py-2 text-xs ${msg.role === 'user'
+                    ? 'bg-aria-accent/15 text-aria-text border border-aria-accent/20'
+                    : 'bg-aria-surface text-aria-text-dim border border-aria-border'
+                    }`}
                 >
                   {msg.role === 'assistant' ? (
                     <div className="markdown-content text-xs">

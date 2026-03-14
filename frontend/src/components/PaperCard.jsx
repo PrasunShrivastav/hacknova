@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
+import useAriaStore from '../store/useAriaStore';
 
 export default function PaperCard({ paper, index }) {
   const [expanded, setExpanded] = useState(false);
   const [explainLevel, setExplainLevel] = useState('undergrad');
   const [explanation, setExplanation] = useState('');
   const [explaining, setExplaining] = useState(false);
+  
+  // Get API base URL from store
+  const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
   const sourceColors = {
     arxiv: 'text-aria-amber border-aria-amber/30 bg-aria-amber/5',
@@ -25,7 +29,7 @@ export default function PaperCard({ paper, index }) {
     if (!paper.abstract) return;
     setExplaining(true);
     try {
-      const res = await fetch('/api/explain', {
+      const res = await fetch(`${API_BASE}/explain`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: paper.abstract, level: explainLevel }),
