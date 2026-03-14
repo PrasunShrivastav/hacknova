@@ -1,4 +1,4 @@
-"""Local LLM client via Ollama with retry logic."""
+"""Two-tier LLM client via Ollama — fast model for extraction, heavy model for reasoning."""
 
 import httpx
 import os
@@ -15,72 +15,75 @@ logger = logging.getLogger(__name__)
 
 # Configure Ollama
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:4b")
+OLLAMA_MODEL_HEAVY = os.getenv("OLLAMA_MODEL", "gemma3:12b")
+OLLAMA_MODEL_FAST = os.getenv("OLLAMA_MODEL_FAST", "gemma3:1b")
 
-# Track last call time
 _last_call_ts: float = 0.0
 
 
-def call_gemini(prompt: str, json_mode: bool = False) -> str:
-    """Call local Ollama model with retry logic.
-
-    Function name kept as call_gemini to avoid changing all callers.
-
-    Args:
-        prompt: The prompt to send.
-        json_mode: If True, appends an instruction to respond only with JSON.
-
-    Returns:
-        The model's text response.
-    """
+def _call_ollama(prompt: str, model: str, json_mode: bool = False,
+                 max_tokens: int = 800, timeout: float = 300.0) -> str:
+    """Internal: call Ollama with specified model."""
     global _last_call_ts
 
     if json_mode:
         prompt = prompt + "\n\nRespond ONLY with valid JSON. No markdown, no explanation, no code fences."
 
-    for attempt in range(4):
-        # Small delay between calls to be gentle on local resources
+    for attempt in range(3):
         elapsed = time.time() - _last_call_ts
-        if elapsed < 0.5:
-            time.sleep(0.5 - elapsed)
+        if elapsed < 0.3:
+            time.sleep(0.3 - elapsed)
 
         try:
             _last_call_ts = time.time()
             response = httpx.post(
                 f"{OLLAMA_BASE_URL}/api/generate",
                 json={
-                    "model": OLLAMA_MODEL,
+                    "model": model,
                     "prompt": prompt,
                     "stream": False,
                     "options": {
-                        "temperature": 0.3,
-                        "num_ctx": 8192,
+                        "temperature": 0.2 if model == OLLAMA_MODEL_HEAVY else 0.1,
+                        "num_ctx": 8192 if model == OLLAMA_MODEL_HEAVY else 4096,
+                        "num_predict": max_tokens,
                     },
                 },
-                timeout=300.0,
+                timeout=timeout,
             )
             response.raise_for_status()
             text = response.json()["response"].strip()
 
-            # Strip markdown code fences if present
             if json_mode:
                 text = _strip_code_fences(text)
             return text
         except httpx.ConnectError:
-            logger.error(
-                "Cannot connect to Ollama. Is it running? Start with: ollama serve"
-            )
-            raise RuntimeError(
-                "Ollama is not running. Start it with: ollama serve"
-            )
+            logger.error("Cannot connect to Ollama. Start with: ollama serve")
+            raise RuntimeError("Ollama is not running. Start it with: ollama serve")
         except Exception as e:
-            logger.warning(f"Ollama error (attempt {attempt+1}): {e}")
-            if attempt < 3:
-                time.sleep(2)
+            logger.warning(f"Ollama {model} error (attempt {attempt+1}): {e}")
+            if attempt < 2:
+                time.sleep(2 * (attempt + 1))
             else:
                 raise e
 
-    raise Exception("Ollama request failed after 4 retries")
+    return "{}" if json_mode else ""
+
+
+# ── TIER 1: Heavy model (gemma3:12b) ──────────────────────────
+# Use for: synthesis, contradiction detection, gap analysis, chat, explain, roadmap
+def call_gemini(prompt: str, json_mode: bool = False) -> str:
+    """Call heavy model for reasoning tasks. Name kept for backward compat."""
+    return _call_ollama(prompt, OLLAMA_MODEL_HEAVY, json_mode=json_mode,
+                        max_tokens=800, timeout=300.0)
+
+
+# ── TIER 2: Fast model (gemma3:1b) ────────────────────────────
+# Use for: paper extraction, keyword tagging, classification
+# ~6-8x faster than 12b
+def call_gemma_fast(prompt: str, json_mode: bool = False) -> str:
+    """Call fast model for structured extraction tasks."""
+    return _call_ollama(prompt, OLLAMA_MODEL_FAST, json_mode=json_mode,
+                        max_tokens=400, timeout=60.0)
 
 
 def _strip_code_fences(text: str) -> str:

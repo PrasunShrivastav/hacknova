@@ -3,9 +3,12 @@ import useAriaStore from '../store/useAriaStore';
 
 const ICONS = {
   crawling: '🔍',
+  filtering: '🎯',
   extracting: '🧠',
+  scoring: '📊',
   graph_building: '🕸️',
   synthesizing: '✍️',
+  roadmap: '🗺️',
   indexing: '📂',
   started: '🚀',
   completed: '🎉',

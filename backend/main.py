@@ -55,10 +55,12 @@ app.add_middleware(
 from api.routes_research import router as research_router
 from api.routes_query import router as query_router
 from api.routes_graph import router as graph_router
+from api.routes_explain import router as explain_router
 
 app.include_router(research_router)
 app.include_router(query_router)
 app.include_router(graph_router)
+app.include_router(explain_router)
 
 
 @app.get("/")

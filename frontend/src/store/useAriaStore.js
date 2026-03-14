@@ -16,6 +16,7 @@ const useAriaStore = create((set, get) => ({
   contradictions: '',
   gaps: null,
   graphData: null,
+  roadmap: null,
 
   // Chat
   chatMessages: [],
@@ -42,6 +43,7 @@ const useAriaStore = create((set, get) => ({
       contradictions: '',
       gaps: null,
       graphData: null,
+      roadmap: null,
       chatMessages: [],
       error: null,
     });
@@ -133,6 +135,7 @@ const useAriaStore = create((set, get) => ({
         contradictions: data.contradictions || '',
         gaps: parsedGaps,
         papers: data.papers || [],
+        roadmap: data.roadmap || null,
       });
 
       // Fetch graph data
@@ -199,6 +202,7 @@ const useAriaStore = create((set, get) => ({
     contradictions: '',
     gaps: null,
     graphData: null,
+    roadmap: null,
     chatMessages: [],
     chatLoading: false,
     activeTab: 'summary',

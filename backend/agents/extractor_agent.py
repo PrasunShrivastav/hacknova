@@ -1,62 +1,52 @@
-"""Extractor agent — uses LLM for structured paper analysis with parallel batching."""
+"""Extractor agent — uses FAST LLM (gemma3:1b) for structured paper extraction."""
 
 import asyncio
 import json
 import logging
+import re
 from concurrent.futures import ThreadPoolExecutor
 
-from llm_client import call_gemini
+from llm_client import call_gemma_fast
 
 logger = logging.getLogger(__name__)
 
-# Process 3 papers concurrently (Ollama handles queuing internally)
 _executor = ThreadPoolExecutor(max_workers=3)
 
-EXTRACT_PROMPT = """You are a research paper analyst. Given the title and abstract of a paper, extract structured information.
+EXTRACT_PROMPT = """Extract structured info from this research paper.
 
-Paper Title: {title}
+Title: {title}
 Abstract: {abstract}
 
-Extract and return ONLY this JSON:
+Return ONLY this JSON:
 {{
   "core_claims": ["claim1", "claim2"],
-  "methodology": "brief description of method used",
+  "methodology": "one sentence",
   "key_results": ["result1", "result2"],
-  "limitations": ["limitation1"],
-  "keywords": ["kw1", "kw2", "kw3"],
-  "domain": "field of study"
+  "limitations": ["limit1"],
+  "keywords": ["kw1", "kw2"],
+  "domain": "field name"
 }}"""
 
 
 def extract_paper(paper: dict) -> dict:
-    """Extract structured claims, methodology, results, and limitations from a paper.
-
-    Args:
-        paper: Paper dict with at least 'title' and 'abstract'.
-
-    Returns:
-        The paper dict enriched with extracted fields.
-    """
+    """Extract one paper using the FAST model (gemma3:1b)."""
     title = paper.get("title", "")
     abstract = paper.get("abstract", "")
 
     if not abstract or len(abstract.strip()) < 20:
         logger.warning(f"Skipping extraction for '{title[:40]}' — abstract too short")
-        paper.setdefault("core_claims", [])
-        paper.setdefault("methodology", "")
-        paper.setdefault("key_results", [])
-        paper.setdefault("limitations", [])
-        paper.setdefault("keywords", [])
-        paper.setdefault("domain", "")
+        paper.update({"core_claims": [], "methodology": "", "key_results": [],
+                      "limitations": [], "keywords": [], "domain": "unknown"})
         return paper
 
     prompt = EXTRACT_PROMPT.format(
-        title=title,
-        abstract=abstract[:2000],  # Limit token usage
+        title=title[:200],
+        abstract=(paper.get("full_text") or abstract)[:2000],
     )
 
     try:
-        raw = call_gemini(prompt, json_mode=True)
+        raw = call_gemma_fast(prompt, json_mode=True)
+        raw = re.sub(r"```json|```", "", raw).strip()
         extracted = json.loads(raw)
 
         paper["core_claims"] = extracted.get("core_claims", [])
@@ -64,25 +54,17 @@ def extract_paper(paper: dict) -> dict:
         paper["key_results"] = extracted.get("key_results", [])
         paper["limitations"] = extracted.get("limitations", [])
         paper["keywords"] = extracted.get("keywords", [])
-        paper["domain"] = extracted.get("domain", "")
+        paper["domain"] = extracted.get("domain", "unknown")
 
-        logger.info(f"Extracted: '{title[:40]}' → {len(paper['core_claims'])} claims, domain={paper['domain']}")
+        logger.info(f"Extracted: '{title[:50]}' → {len(paper['core_claims'])} claims")
     except json.JSONDecodeError as e:
         logger.warning(f"JSON parse error for '{title[:40]}': {e}")
-        paper.setdefault("core_claims", [])
-        paper.setdefault("methodology", "")
-        paper.setdefault("key_results", [])
-        paper.setdefault("limitations", [])
-        paper.setdefault("keywords", [])
-        paper.setdefault("domain", "")
+        paper.update({"core_claims": [], "methodology": "", "key_results": [],
+                      "limitations": [], "keywords": [], "domain": "unknown"})
     except Exception as e:
         logger.error(f"Extraction failed for '{title[:40]}': {e}")
-        paper.setdefault("core_claims", [])
-        paper.setdefault("methodology", "")
-        paper.setdefault("key_results", [])
-        paper.setdefault("limitations", [])
-        paper.setdefault("keywords", [])
-        paper.setdefault("domain", "")
+        paper.update({"core_claims": [], "methodology": "", "key_results": [],
+                      "limitations": [], "keywords": [], "domain": "unknown"})
 
     return paper
 
@@ -91,23 +73,16 @@ async def extract_all_papers(
     papers: list[dict],
     status_callback=None,
 ) -> list[dict]:
-    """Extract structured information from all papers using parallel batching.
+    """Extract papers in parallel batches using the FAST model.
 
-    Papers are processed in batches of 3 concurrently via ThreadPoolExecutor.
-
-    Args:
-        papers: List of paper dicts.
-        status_callback: Async callback for SSE updates.
-
-    Returns:
-        List of enriched paper dicts.
+    Uses ThreadPoolExecutor with 3 workers for ~3x speedup.
     """
     async def emit(event: str, detail: str, progress: int):
         if status_callback:
             await status_callback(event, detail, progress)
 
     total = len(papers)
-    await emit("extracting", f"🧠 Extracting structured data from {total} papers (parallel)...", 56)
+    await emit("extracting", f"🧠 Extracting {total} papers (fast model, parallel)...", 56)
 
     loop = asyncio.get_event_loop()
     extracted = []
@@ -116,7 +91,6 @@ async def extract_all_papers(
     for batch_start in range(0, total, batch_size):
         batch = papers[batch_start:batch_start + batch_size]
 
-        # Run batch concurrently
         futures = [
             loop.run_in_executor(_executor, extract_paper, paper)
             for paper in batch
@@ -130,14 +104,9 @@ async def extract_all_papers(
             else:
                 extracted.append(result)
 
-        # Progress update after each batch
         done = min(batch_start + batch_size, total)
         progress = 56 + int((done / total) * 15)
-        await emit(
-            "extracting",
-            f"🧠 Extracted {done}/{total} papers",
-            min(progress, 71),
-        )
+        await emit("extracting", f"🧠 Extracted {done}/{total} papers", min(progress, 71))
 
-    await emit("extracting", f"✅ Extraction complete: {len(extracted)} papers processed", 72)
+    await emit("extracting", f"✅ Extraction complete: {len(extracted)} papers", 72)
     return extracted

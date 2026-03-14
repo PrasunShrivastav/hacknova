@@ -2,20 +2,41 @@ import React, { useState } from 'react';
 
 export default function PaperCard({ paper, index }) {
   const [expanded, setExpanded] = useState(false);
+  const [explainLevel, setExplainLevel] = useState('undergrad');
+  const [explanation, setExplanation] = useState('');
+  const [explaining, setExplaining] = useState(false);
 
   const sourceColors = {
     arxiv: 'text-aria-amber border-aria-amber/30 bg-aria-amber/5',
     semantic_scholar: 'text-aria-accent border-aria-accent/30 bg-aria-accent/5',
     pubmed: 'text-aria-green border-aria-green/30 bg-aria-green/5',
   };
-
-  const sourceLabel = {
-    arxiv: 'arXiv',
-    semantic_scholar: 'S2',
-    pubmed: 'PubMed',
-  };
-
+  const sourceLabel = { arxiv: 'arXiv', semantic_scholar: 'S2', pubmed: 'PubMed' };
   const badgeClass = sourceColors[paper.source] || 'text-aria-text-dim border-aria-border bg-aria-surface';
+
+  const levels = [
+    { id: 'child', label: '👶 Child', short: '👶' },
+    { id: 'highschool', label: '🎒 High School', short: '🎒' },
+    { id: 'undergrad', label: '🎓 Undergrad', short: '🎓' },
+    { id: 'phd', label: '🔬 PhD', short: '🔬' },
+  ];
+
+  const handleExplain = async () => {
+    if (!paper.abstract) return;
+    setExplaining(true);
+    try {
+      const res = await fetch('/api/explain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: paper.abstract, level: explainLevel }),
+      });
+      const data = await res.json();
+      setExplanation(data.explanation);
+    } catch (e) {
+      setExplanation('Failed to generate explanation. Please try again.');
+    }
+    setExplaining(false);
+  };
 
   return (
     <div
@@ -33,13 +54,9 @@ export default function PaperCard({ paper, index }) {
             <span className={`text-[10px] px-1.5 py-0.5 rounded border font-mono ${badgeClass}`}>
               {sourceLabel[paper.source] || paper.source}
             </span>
-            {paper.year && (
-              <span className="text-[10px] text-aria-text-muted">{paper.year}</span>
-            )}
+            {paper.year && <span className="text-[10px] text-aria-text-muted">{paper.year}</span>}
             {paper.citation_count > 0 && (
-              <span className="text-[10px] text-aria-text-muted">
-                {paper.citation_count} citations
-              </span>
+              <span className="text-[10px] text-aria-text-muted">{paper.citation_count} citations</span>
             )}
             {paper.relevance_score != null && (
               <span className={`text-[10px] px-1.5 py-0.5 rounded border font-mono ${
@@ -52,9 +69,7 @@ export default function PaperCard({ paper, index }) {
             )}
           </div>
         </div>
-        <span className="text-aria-text-muted text-xs mt-1 flex-shrink-0">
-          {expanded ? '▾' : '▸'}
-        </span>
+        <span className="text-aria-text-muted text-xs mt-1 flex-shrink-0">{expanded ? '▾' : '▸'}</span>
       </div>
 
       {/* Authors */}
@@ -67,7 +82,7 @@ export default function PaperCard({ paper, index }) {
 
       {/* Expanded content */}
       {expanded && (
-        <div className="mt-3 pt-3 border-t border-aria-border space-y-3 animate-slide-up">
+        <div className="mt-3 pt-3 border-t border-aria-border space-y-3 animate-slide-up" onClick={(e) => e.stopPropagation()}>
           {/* Abstract */}
           {paper.abstract && (
             <div>
@@ -78,7 +93,43 @@ export default function PaperCard({ paper, index }) {
             </div>
           )}
 
-          {/* Claims */}
+          {/* ✨ EXPLAIN LIKE I'M NEW — Feature 1 */}
+          {paper.abstract && (
+            <div className="bg-aria-surface/80 rounded-lg p-3 border border-aria-border/50">
+              <h4 className="text-[10px] uppercase tracking-wider text-aria-accent mb-2 flex items-center gap-1">
+                ✨ Explain Like I'm New
+              </h4>
+              <div className="flex items-center gap-1.5 mb-2">
+                {levels.map((l) => (
+                  <button
+                    key={l.id}
+                    onClick={() => { setExplainLevel(l.id); setExplanation(''); }}
+                    className={`text-[10px] px-2 py-1 rounded-md border transition-all ${
+                      explainLevel === l.id
+                        ? 'bg-aria-accent/15 border-aria-accent/30 text-aria-accent'
+                        : 'border-aria-border text-aria-text-muted hover:text-aria-text-dim'
+                    }`}
+                  >
+                    {l.short} {l.id}
+                  </button>
+                ))}
+                <button
+                  onClick={handleExplain}
+                  disabled={explaining}
+                  className="ml-auto text-[10px] btn-glow px-3 py-1 rounded-md disabled:opacity-40"
+                >
+                  {explaining ? '⏳...' : '✨ Explain'}
+                </button>
+              </div>
+              {explanation && (
+                <div className="bg-aria-bg/50 rounded-md p-2.5 border border-aria-border/30">
+                  <p className="text-xs text-aria-text leading-relaxed">{explanation}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Core Claims */}
           {paper.core_claims && paper.core_claims.length > 0 && (
             <div>
               <h4 className="text-[10px] uppercase tracking-wider text-aria-text-muted mb-1">Core Claims</h4>
@@ -112,10 +163,10 @@ export default function PaperCard({ paper, index }) {
             </div>
           )}
 
-          {/* Link */}
-          {paper.url && (
+          {/* Link — fallback to pdf_url if url is missing */}
+          {(paper.url || paper.pdf_url) && (
             <a
-              href={paper.url}
+              href={paper.url || paper.pdf_url}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs text-aria-accent hover:underline"

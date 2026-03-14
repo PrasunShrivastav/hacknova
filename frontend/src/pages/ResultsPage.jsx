@@ -5,11 +5,13 @@ import LiteratureSummary from '../components/LiteratureSummary';
 import ContradictionReport from '../components/ContradictionReport';
 import ResearchGapBrief from '../components/ResearchGapBrief';
 import KnowledgeGraph from '../components/KnowledgeGraph';
+import RoadmapView from '../components/RoadmapView';
 import PaperCard from '../components/PaperCard';
 import ChatInterface from '../components/ChatInterface';
 
 const TABS = [
   { id: 'summary', label: 'Summary', icon: '📄' },
+  { id: 'roadmap', label: 'Roadmap', icon: '🗺️' },
   { id: 'contradictions', label: 'Contradictions', icon: '⚠️' },
   { id: 'gaps', label: 'Research Gaps', icon: '🔍' },
   { id: 'graph', label: 'Knowledge Graph', icon: '🕸️' },
@@ -62,7 +64,7 @@ export default function ResultsPage() {
           </div>
         </div>
 
-        {/* Progress bar (while running) */}
+        {/* Progress bar */}
         {isRunning && (
           <div className="h-0.5 bg-aria-border">
             <div
@@ -73,7 +75,7 @@ export default function ResultsPage() {
         )}
       </header>
 
-      {/* Status feed (while running) */}
+      {/* Status feed */}
       {isRunning && (
         <div className="max-w-7xl mx-auto px-4 mt-4">
           <AgentStatusFeed />
@@ -92,13 +94,13 @@ export default function ResultsPage() {
       {/* Tab navigation */}
       {(status === 'completed' || papers.length > 0) && (
         <div className="max-w-7xl mx-auto px-4 mt-6">
-          <div className="flex items-center gap-1 bg-aria-surface/50 p-1 rounded-lg border border-aria-border w-fit">
+          <div className="flex items-center gap-1 bg-aria-surface/50 p-1 rounded-lg border border-aria-border w-fit overflow-x-auto">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
                 id={`tab-${tab.id}`}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap
                   ${activeTab === tab.id
                     ? 'bg-aria-card text-aria-text border border-aria-border shadow-sm'
                     : 'text-aria-text-muted hover:text-aria-text-dim'
@@ -121,6 +123,7 @@ export default function ResultsPage() {
       {(status === 'completed' || papers.length > 0) && (
         <div className="max-w-7xl mx-auto px-4 mt-4">
           {activeTab === 'summary' && <LiteratureSummary />}
+          {activeTab === 'roadmap' && <RoadmapView />}
           {activeTab === 'contradictions' && <ContradictionReport />}
           {activeTab === 'gaps' && <ResearchGapBrief />}
           {activeTab === 'graph' && <KnowledgeGraph />}
