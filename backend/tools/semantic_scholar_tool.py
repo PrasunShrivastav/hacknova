@@ -38,7 +38,7 @@ def search_semantic_scholar(query: str, max_results: int = 20) -> list[dict]:
                 time.sleep(wait)
                 continue
             resp.raise_for_status()
-            data = resp.json().get("data", [])
+            data = resp.json().get("data") or []
 
             for p in data:
                 external_ids = p.get("externalIds") or {}
@@ -93,7 +93,7 @@ def get_citations(paper_id: str) -> list[dict]:
             logger.warning(f"Citations request failed with status {resp.status_code}")
             return []
 
-        refs = resp.json().get("data", [])
+        refs = resp.json().get("data") or []
         papers = []
         for ref in refs:
             cited = ref.get("citedPaper", {})

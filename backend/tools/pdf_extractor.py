@@ -76,8 +76,8 @@ def enrich_papers_with_pdf(papers: list[dict]) -> list[dict]:
         text = extract_pdf_text(paper["pdf_url"], max_pages=3)
         return idx, text
 
-    with _executor as executor:
-        results = list(executor.map(fetch_one, papers_to_enrich))
+    # Use the global executor directly without a 'with' block to avoid shutting it down
+    results = list(_executor.map(fetch_one, papers_to_enrich))
 
     enriched_count = 0
     for idx, text in results:

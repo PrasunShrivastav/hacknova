@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 
-const API_BASE = '/api';
+// In production (Vercel), VITE_API_URL points to the Render backend
+// In local dev, falls back to '/api' (proxied by Vite to localhost:8000)
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 const useAriaStore = create((set, get) => ({
   // === State ===
