@@ -38,6 +38,9 @@ def _call_ollama(prompt: str, model: str, json_mode: bool = False,
             _last_call_ts = time.time()
             response = httpx.post(
                 f"{OLLAMA_BASE_URL}/api/generate",
+                headers={
+                    "ngrok-skip-browser-warning": "true",  # Bypass ngrok 403 interstitial
+                },
                 json={
                     "model": model,
                     "prompt": prompt,
