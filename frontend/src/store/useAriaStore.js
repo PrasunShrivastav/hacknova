@@ -1,8 +1,66 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 // In production (Vercel), VITE_API_URL points to the Render backend
 // In local dev, falls back to '/api' (proxied by Vite to localhost:8000)
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
+
+// Local storage utilities
+const STORAGE_KEY = 'aria-session-history';
+
+const saveSessionToHistory = (sessionData) => {
+  try {
+    const existingHistory = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    const newSession = {
+      id: sessionData.sessionId,
+      question: sessionData.question,
+      timestamp: new Date().toISOString(),
+      papers: sessionData.papers,
+      summary: sessionData.summary,
+      contradictions: sessionData.contradictions,
+      gaps: sessionData.gaps,
+      roadmap: sessionData.roadmap,
+      status: sessionData.status,
+      progress: sessionData.progress
+    };
+    
+    // Remove any existing session with same ID
+    const filteredHistory = existingHistory.filter(s => s.id !== sessionData.sessionId);
+    // Add new session at the beginning
+    const updatedHistory = [newSession, ...filteredHistory].slice(0, 50); // Keep last 50 sessions
+    
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedHistory));
+  } catch (error) {
+    console.error('Failed to save session to history:', error);
+  }
+};
+
+const getSessionHistory = () => {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  } catch (error) {
+    console.error('Failed to load session history:', error);
+    return [];
+  }
+};
+
+const deleteSessionFromHistory = (sessionId) => {
+  try {
+    const existingHistory = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    const updatedHistory = existingHistory.filter(s => s.id !== sessionId);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedHistory));
+  } catch (error) {
+    console.error('Failed to delete session from history:', error);
+  }
+};
+
+const clearSessionHistory = () => {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch (error) {
+    console.error('Failed to clear session history:', error);
+  }
+};
 
 const useAriaStore = create((set, get) => ({
   // === State ===
@@ -26,6 +84,10 @@ const useAriaStore = create((set, get) => ({
 
   // Active tab
   activeTab: 'summary', // summary | contradictions | gaps | graph | papers
+
+  // Session History
+  sessionHistory: [],
+  showHistory: false,
 
   // Error
   error: null,
@@ -140,6 +202,23 @@ const useAriaStore = create((set, get) => ({
         roadmap: data.roadmap || null,
       });
 
+      // Save session to history
+      const currentState = get();
+      saveSessionToHistory({
+        sessionId: currentState.sessionId,
+        question: currentState.question,
+        papers: data.papers || [],
+        summary: data.summary || '',
+        contradictions: data.contradictions || '',
+        gaps: parsedGaps,
+        roadmap: data.roadmap || null,
+        status: 'completed',
+        progress: 100
+      });
+      
+      // Update history in state
+      get().loadSessionHistory();
+
       // Fetch graph data
       get().fetchGraph(sessionId);
     } catch (err) {
@@ -193,6 +272,43 @@ const useAriaStore = create((set, get) => ({
     }
   },
 
+  // Session History Actions
+  loadSessionHistory: () => {
+    const history = getSessionHistory();
+    set({ sessionHistory: history });
+  },
+
+  toggleHistory: () => {
+    set((state) => ({ showHistory: !state.showHistory }));
+  },
+
+  restoreSession: (sessionData) => {
+    set({
+      sessionId: sessionData.id,
+      question: sessionData.question,
+      papers: sessionData.papers,
+      summary: sessionData.summary,
+      contradictions: sessionData.contradictions,
+      gaps: sessionData.gaps,
+      roadmap: sessionData.roadmap,
+      status: sessionData.status || 'completed',
+      progress: sessionData.progress || 100,
+      chatMessages: [],
+      error: null,
+      showHistory: false
+    });
+  },
+
+  deleteSession: (sessionId) => {
+    deleteSessionFromHistory(sessionId);
+    get().loadSessionHistory();
+  },
+
+  clearHistory: () => {
+    clearSessionHistory();
+    set({ sessionHistory: [] });
+  },
+
   reset: () => set({
     sessionId: null,
     status: 'idle',
@@ -209,6 +325,7 @@ const useAriaStore = create((set, get) => ({
     chatLoading: false,
     activeTab: 'summary',
     error: null,
+    showHistory: false
   }),
 }));
 

@@ -1,11 +1,20 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import SearchBar from '../components/SearchBar';
 import AgentStatusFeed from '../components/AgentStatusFeed';
+import SessionHistory from '../components/SessionHistory';
 import useAriaStore from '../store/useAriaStore';
 
 export default function HomePage() {
   const status = useAriaStore((s) => s.status);
   const error = useAriaStore((s) => s.error);
+  const sessionHistory = useAriaStore((s) => s.sessionHistory);
+  const toggleHistory = useAriaStore((s) => s.toggleHistory);
+  const loadSessionHistory = useAriaStore((s) => s.loadSessionHistory);
+
+  // Load session history on component mount
+  useEffect(() => {
+    loadSessionHistory();
+  }, [loadSessionHistory]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4">
@@ -32,6 +41,25 @@ export default function HomePage() {
       {/* Search */}
       <SearchBar />
 
+      {/* History button */}
+      {sessionHistory.length > 0 && (
+        <div className="mt-6 animate-fade-in">
+          <button
+            onClick={toggleHistory}
+            className="flex items-center gap-2 px-4 py-2 bg-aria-surface/50 border border-aria-border rounded-lg text-sm text-aria-text hover:bg-aria-surface/70 transition-all group"
+          >
+            <span className="text-lg">📚</span>
+            <span>View Session History</span>
+            <span className="text-xs bg-aria-accent/10 text-aria-accent px-2 py-0.5 rounded-full">
+              {sessionHistory.length}
+            </span>
+            <span className="text-aria-text-muted group-hover:text-aria-text transition-colors">
+              →
+            </span>
+          </button>
+        </div>
+      )}
+
       {/* Status feed during loading */}
       {(status === 'running' || status === 'searching') && (
         <div className="w-full max-w-3xl mt-8 animate-fade-in">
@@ -51,6 +79,9 @@ export default function HomePage() {
           </div>
         </div>
       )}
+
+      {/* Session History Modal */}
+      <SessionHistory />
 
       {/* Footer stats */}
       <div className="fixed bottom-0 w-full py-4 text-center border-t border-aria-border/30 bg-aria-bg/80 backdrop-blur-sm">
